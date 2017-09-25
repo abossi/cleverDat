@@ -1,0 +1,287 @@
+<div class="row" style="margin:5px;">
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select table</span>
+	  <input type="text" id="table" class="form-control" placeholder="table name" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select longitude</span>
+	  <input type="text" id="longitude" class="form-control" placeholder="longitude column" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select latitude</span>
+	  <input type="text" id="latitude" class="form-control" placeholder="latitude column" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select popup</span>
+	  <input type="text" id="popup" class="form-control" placeholder="latitude column" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+</div><!-- /.row -->
+<div id="leafletMap" style="height:90vmin;"></div>
+
+<script>
+
+(function () {
+
+	L.TextIcon = L.Icon.extend({
+		options: L.extend({
+			className: 'leaflet-div-icon',
+			getIconUrl: function(color) {
+				//if (L.Browser.retina) - use 2x version
+				return 'front/extern/images/marker-hole-'+ (color || 'blue') +'.svg' 
+			}
+		}, new L.Icon.Default().options),
+
+	 	initialize: function(options) {
+	 		L.extend(options, {
+	 			shadowUrl: 'front/extern/images/marker-shadow.png'
+	 		});
+	 		L.setOptions(this, options);
+	 		var iconUrl = this.options.getIconUrl(this.options.color);
+	 		this._iconImg = this._createImg(iconUrl);
+	 	},
+		createIcon: function() {
+			var textDiv = document.createElement('div');
+			textDiv.className = 'icon-text';
+			textDiv.innerHTML = this.options.text || '';
+
+			var div = document.createElement('div');
+			div.appendChild(this._iconImg);
+			div.appendChild(textDiv);
+
+			this._setIconStyles(div, 'icon');
+			this._textDiv = textDiv;
+			return div;
+		},
+		setColor: function(color) {
+			this._iconImg.src = this.options.getIconUrl(color);
+		},
+		setText: function(text) {
+			this._textDiv.innerHTML = text || '';
+		}
+	});
+
+}());
+
+var googleLayerROADMAP = new L.Google('ROADMAP');
+var googleLayerSATELLITE = new L.Google('SATELLITE');
+var googleLayerHYBRID  = new L.Google("HYBRID");
+var googleLayerTERRAIN = new L.Google('TERRAIN');
+
+
+
+var baseMap = {
+    "Route" : googleLayerROADMAP,
+    "Satellite" : googleLayerSATELLITE,
+    "Hybride" : googleLayerHYBRID,
+    "Relief" : googleLayerTERRAIN
+};
+
+
+var mymap = new L.Map('leafletMap', 
+  {
+    center: new L.LatLng(48.896403, 2.318653),
+    zoom: 3,
+    layers: [googleLayerROADMAP]
+  });
+
+//Contrôles pour les layers contenant les données.
+var overlaysMaps = {
+
+};
+
+L.control.layers(baseMap, null, { collapsed: false }).addTo(mymap);
+
+var points = [];
+var popup_list = [];
+var visible_markers = [];
+var visible_popup = [];
+var bounds = {};
+var num_iter = 0;
+
+mymap.on('moveend', function() {
+    remove_points();
+    set_points();
+});
+
+mymap.on('popupopen', function(e) {
+    num_iter = 0;
+});
+
+var edit_parameters_leaflet = function(){
+	var table = $('#table').val();
+	var longitude = $('#longitude').val();
+	var latitude = $('#latitude').val();
+	var popup = $('#popup').val();
+
+	api.setScriptPluginParam(globals.project_path, globals.project, globals.script, 'exp', globals.position['exp'], {
+		'table': table,
+		'longitude': longitude,
+		'latitude': latitude,
+		'popup': popup
+	}).then(function(a){
+        $.toaster({ message : a['message'], priority : 'success' });
+    	if ($('#table').val() !== '' && $('#longitude').val() !== '' && $('#latitude').val() !== ''){
+			api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'exp', globals.position['exp']).then(function(b){
+				remove_points();
+				points = [];
+				popup_list = [];
+				for (var i = 0; i < b[$('#table').val()][0].length ; i++){
+					points.push([parseFloat(b[$('#table').val()][0][i]), parseFloat(b[$('#table').val()][1][i])]);
+					if (b[$('#table').val()][2] !== undefined)
+						popup_list.push(b[$('#table').val()][2][i]);
+					else
+						popup_list = [];
+				}
+				set_points();
+			})
+		}
+	})
+}
+
+var remove_points = function(){
+	mymap.eachLayer(function (layer) {
+		if (layer._url === undefined && !layer._google) {
+			mymap.removeLayer(layer);
+		}
+	});
+}
+
+var refresh_popup = function(move_dir, num_popup){
+	num_iter += move_dir;
+	if (num_iter < 0)
+		num_iter = visible_popup[num_popup].length - 1;
+	if (num_iter >= visible_popup[num_popup].length)
+		num_iter = 0;
+	$('.num_iter').html((num_iter + 1) + '');
+	$('#popup_id_' + num_popup).html(visible_popup[num_popup][num_iter]);
+}
+
+var set_points = function(){
+	bounds = mymap.getBounds();
+	visible_markers = [];
+	visible_popup = [];
+	var nb_in_marker = [];
+	var size = 0;
+	var points_length = points.length;
+	var half_longueur_cote = Math.min(Math.abs(bounds._southWest.lat - bounds._northEast.lat), Math.abs(bounds._southWest.lng - bounds._northEast.lng)) / 50;
+	for (var i = 0 ; i < points_length ; i++){
+		if (points[i][0] >= bounds._southWest.lat && points[i][0] <= bounds._northEast.lat &&
+			((Math.floor((bounds._southWest.lng + 180) / 360) != Math.floor((bounds._northEast.lng + 180) / 360) &&
+			(points[i][1] >= ((bounds._southWest.lng + 180) % 360 - 180) || points[i][1] <= ((bounds._northEast.lng + 180) % 360 - 180)) &&
+			(points[i][1] <= ((bounds._northEast.lng - 180) % 360 + 180) || points[i][1] >= ((bounds._southWest.lng - 180) % 360 + 180))) ||
+			(Math.floor((bounds._southWest.lng + 180) / 360) == Math.floor((bounds._northEast.lng + 180) / 360) &&
+			points[i][1] >= ((bounds._southWest.lng + 180) % 360 - 180) && points[i][1] <= ((bounds._northEast.lng - 180) % 360 + 180)))) {
+			var add_point = true;
+			for (var j = 0 ; j < visible_markers.length ; j++){
+				if (points[i][0] >= (visible_markers[j][0] - half_longueur_cote) && points[i][0] <= (visible_markers[j][0] + half_longueur_cote) &&
+					points[i][1] >= (visible_markers[j][1] - half_longueur_cote)  && points[i][1] <= (visible_markers[j][1] + half_longueur_cote)){
+					add_point = false;
+					nb_in_marker[j]++;
+					if (popup_list.length)
+						visible_popup[j].push(popup_list[i]);
+					break;
+				}
+			}
+			if (add_point){
+				visible_markers.push(points[i]);
+				if (popup_list.length)
+					visible_popup.push([popup_list[i]]);
+				nb_in_marker.push(1);
+				size++;
+			}
+		}
+	}
+	var nb_point_min = -1;
+	var total_markers = 401;
+	while (total_markers > 400){
+		total_markers = 0;
+		nb_point_min++;
+		for (var i = 0 ; i < size ; i++){
+			if (nb_in_marker[i] > nb_point_min)
+				total_markers++;
+		}
+	}
+	for (var i = 0 ; i < size ; i++){
+		while (visible_markers[i][1] < bounds._southWest.lng)
+			visible_markers[i][1] += 360;
+		while (visible_markers[i][1] > bounds._northEast.lng)
+			visible_markers[i][1] -= 360;
+		if (nb_in_marker[i] > nb_point_min){
+			var icon = new L.TextIcon({ text: ((nb_in_marker[i] >= 100) ? "+99" : nb_in_marker[i] + ''), color: 'blue' });
+			var marker = L.marker(visible_markers[i], {icon: icon}).addTo(mymap);
+			var text_popup = '';
+			if (visible_popup.length){
+				if (visible_popup[i].length > 1){
+					text_popup += '<span class="glyphicon glyphicon-chevron-left" aria-hidden="true" style="cursor:pointer;" onclick="refresh_popup(-1, ' + i + ');"></span>' +
+						'<b class="num_iter">1</b> / ' + visible_popup[i].length +
+						'<span class="glyphicon glyphicon-chevron-right" aria-hidden="true" style="cursor:pointer;" onclick="refresh_popup(1, ' + i + ');"></span><br>';
+				}
+				text_popup += '<b>' + $('#popup').val() + '</b>: <span id="popup_id_' + i + '">' + visible_popup[i][0] + '</span>';
+				marker.bindPopup(text_popup);
+			}
+		}
+		else {
+			marker = L.polygon([visible_markers[i]]).addTo(mymap);
+			var text_popup = '';
+			if (visible_popup.length){
+				if (visible_popup[i].length > 1){
+					text_popup += '<span class="glyphicon glyphicon-chevron-left" aria-hidden="true" style="cursor:pointer;" onclick="refresh_popup(-1, ' + i + ');"></span>' +
+						'<b class="num_iter">1</b> / ' + visible_popup[i].length +
+						'<span class="glyphicon glyphicon-chevron-right" aria-hidden="true" style="cursor:pointer;" onclick="refresh_popup(1, ' + i + ');"></span><br>';
+				}
+				text_popup += '<b>' + $('#popup').val() + '</b>: <span id="popup_id_' + i + '">' + visible_popup[i][0] + '</span>';
+				marker.bindPopup(text_popup);
+			}
+		}
+	}
+}
+
+api.getScriptPluginParam(globals.project_path, globals.project, globals.script, 'exp', globals.position['exp']).then(function(a){
+	$('#table').val(a.table);
+	$('#longitude').val(a.longitude);
+	$('#latitude').val(a.latitude);
+	$('#popup').val(a.popup);
+
+    if (a.table !== '' && a.longitude !== '' && a.latitude !== ''){
+		api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'exp', globals.position['exp']).then(function(b){
+			for (var i = 0; i < b[$('#table').val()][0].length ; i++){
+				points.push([parseFloat(b[$('#table').val()][0][i]), parseFloat(b[$('#table').val()][1][i])]);
+				if (b[$('#table').val()][2] !== undefined)
+					popup_list.push(b[$('#table').val()][2][i]);
+				else
+					popup_list = [];
+			}
+			set_points();
+		})
+	}
+});
+</script>
+<style>
+.leaflet-div-icon {
+	background: transparent;
+	border: none;
+}
+
+.leaflet-popup-content {
+	text-align: center;
+}
+
+.leaflet-marker-icon .icon-text {
+	position: relative;
+    top: -34px;
+    font-size: 9px;
+	width: 25px;
+	text-align: center;
+}
+.leaflet-google-layer {
+  z-index: 0;
+}
+</style>

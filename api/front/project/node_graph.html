@@ -1,0 +1,260 @@
+<svg id="view_project" viewBox="-400 -300 800 600" preserveAspectRatio="xMidYMid slice" style="position:absolute;height:100%;width:100%;left:0;top:0;">
+</svg>
+<div style="position:absolute;top:5px;right:5px;">
+  <div style="margin:5px">
+    <button type="button" class="btn btn-primary" aria-hidden="true" data-toggle="modal" data-target="#new_script"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span></button>
+  </div>
+  <div style="margin:5px">
+    <button type="button" class="btn btn-default" aria-hidden="true" data-toggle="modal" data-target="#project_settings"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button>
+  </div>
+</div>
+<script>
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+  (factory((global.widget_project = global.widget_project || {}))); //changer ici le nom du module
+}(this, (function (exports) {
+
+  var show_scripts_proj = function(){
+    $('#view_project').html('');
+
+    var svg = d3.select("#view_project"),
+        width = +svg.attr("width"),
+        height = +svg.attr("height");
+
+    var simulation = d3.forceSimulation()
+        .force("charge", d3.forceManyBody().strength(-200))
+//        .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(40))
+        .force("x", d3.forceX(width / 2))
+        .force("y", d3.forceY(height / 2))
+        .on("tick", ticked);
+
+    var /*link = svg.selectAll(".link"),*/
+        node = svg.selectAll(".node");
+
+    api.getScript(globals.project_path, globals.project).then(function(a) {
+      data = {"nodes":[],
+              "links": []};
+      for (el in a.result){
+        data.nodes.push({'id': a.result[el]});
+      }
+      simulation.nodes(data.nodes);
+    /*  simulation.force("link").links(graph.links);
+
+      link = link
+        .data(graph.links)
+        .enter().append("line")
+          .attr("class", "link");
+    */
+
+      node = svg
+        .selectAll("circle")
+        .data(data.nodes)
+        .enter().append("g")
+        .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended))
+
+      node.append("circle")
+        .attr("r", 10)
+        .style('fill', '#00BCD4')
+        .attr('fy', function(d){
+          var fx = cookies.readCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fx');
+          var fy = cookies.readCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fy');
+          if (fx !== null && fx !== '')
+            d.fx = fx;
+          if (fy !== null && fy !== '')
+            d.fy = fy;
+          return 0;
+        })
+        .attr('stroke-width', 3)
+        .attr('stroke', '#00BCD4')
+        .attr('stroke-opacity', 0.5)
+        .on("mouseover", handleMouseOver)
+        .on('click', mouseClick)
+
+      node.append("text")
+        .attr("x", 20)
+        .attr("y", 5)
+        .style('visibility', 'hidden')
+        .text( function (d) { return d.id; });
+
+      node.append("svg:foreignObject")
+        .attr("width", 8)
+        .attr("height", 9)
+        .attr("y", "-16px")
+        .attr("x", "-3px")
+        .append("xhtml:span")
+        .attr("class", "glyphicon glyphicon-trash")
+        .attr('style', function(d) {return ( navigator.userAgent.toLowerCase() .indexOf('safari') > -1) ? 'position:fixed;font-size:0.8vmax;' : 'position:fixed;font-size:0.25vmax;'; })
+        .style('visibility', 'hidden')
+        .style('opacity', '0')
+        .style('color', 'red')
+        .style('cursor', 'pointer')
+        .on('click', mouseClickTrash);
+
+      node.append("svg:foreignObject")
+        .attr("width", 8)
+        .attr("height", 9)
+        .attr("y", "-10px")
+        .attr("x", "-14px")
+        .append("xhtml:span")
+        .attr("class", "glyphicon glyphicon-pencil")
+        .attr('style', function(d) {return ( navigator.userAgent.toLowerCase() .indexOf('safari') > -1) ? 'position:fixed;font-size:0.8vmax;' : 'position:fixed;font-size:0.25vmax;'; })
+        .attr('data-toggle', "modal")
+        .attr('data-target', '#edit_script')
+        .attr('onclick', function(d) { return "project.editScr('" + d.id + "');"; })
+        .style('visibility', 'hidden')
+        .style('opacity', '0')
+        .style('color', 'white')
+        .style('cursor', 'pointer');
+
+      node.append("svg:foreignObject")
+        .attr("width", 8)
+        .attr("height", 9)
+        .attr("y", "-10px")
+        .attr("x", "9px")
+        .append("xhtml:span")
+        .attr("class", "glyphicon glyphicon-play")
+        .attr('style', function(d) {return ( navigator.userAgent.toLowerCase() .indexOf('safari') > -1) ? 'position:fixed;font-size:0.8vmax;' : 'position:fixed;font-size:0.25vmax;'; })
+        .style('visibility', 'hidden')
+        .style('opacity', '0')
+        .style('color', 'white')
+        .style('cursor', 'pointer')
+        .on('click', function(d){
+          script.runScript(d.id);
+        });
+
+      node.append("svg:foreignObject")
+        .attr("width", 8)
+        .attr("height", 9)
+        .attr("y", "3px")
+        .attr("x", "9px")
+        .append("xhtml:i")
+        .style('visibility', 'hidden')
+        .style('opacity', '0')
+        .style('color', 'white')
+        .style('position', 'fixed')
+        .style('font-size', function(d) {return ( navigator.userAgent.toLowerCase() .indexOf('safari') > -1) ? '0.8vmax' : '0.25vmax'; })
+        .style('cursor', 'pointer')
+        .attr('class', function(d){ 
+          var fx = cookies.readCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fx');
+          return (fx !== null && fx !== '') ? 'fa fa-lock' : 'fa fa-unlock';
+        })
+        .on('click', unlock);
+
+      project.getPluginsPaths()
+    });
+
+    d3.selection.prototype.moveToFront = function() {
+      return this.each(function(){
+        this.parentNode.appendChild(this);
+      });
+    };
+
+    function mouseClickTrash(d){
+      if (confirm("Are you sure that you want to remove this script?")){
+        api.deleteScript(globals.project_path, globals.project, d3.select(this.parentNode.parentNode).datum().id).then(function(a){
+          $.toaster({ message : a['message'], priority : 'success' });
+          show_scripts_proj();
+        })
+      }
+    }
+
+    function handleMouseOver(d){
+      el = $(this).parent().get(0);
+      if (old_el !== null && old_el !== el) {
+        d3.select(old_el).selectAll("text").style('visibility', 'hidden');
+        d3.select(old_el).selectAll("foreignObject").select("span").transition().style('opacity', 0);
+        d3.select(old_el).selectAll("foreignObject").select("span").style('visibility', 'hidden');
+        d3.select(old_el).selectAll("foreignObject").select("i").transition().style('opacity', 0);
+        d3.select(old_el).selectAll("foreignObject").select("i").style('visibility', 'hidden');
+        d3.select(old_el).select("circle").transition().attr('stroke-width', 3)
+          .attr('r', 10);
+      }
+      d3.select(el).moveToFront();
+      d3.select(el).select("circle").transition().attr('stroke-width', 20)
+        .attr('r', 8);
+      d3.select(el).selectAll("text").style('visibility', 'visible');
+      d3.select(el).selectAll("foreignObject").select("span").style('visibility', 'visible')
+        .transition().style('opacity', '1');
+      d3.select(el).selectAll("foreignObject").select("i").style('visibility', 'visible')
+        .transition().style('opacity', '1');
+      old_el = el;
+    }
+
+    function unlock(d){
+      d.x = parseInt(d.fx);
+      d.y = parseInt(d.fy);
+      d.fx = null;
+      d.fy = null;
+      d.vx = 0;
+      d.vy = 0;
+      cookies.eraseCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fx');
+      cookies.eraseCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fy');
+      d3.select(this).attr('class', 'fa fa-unlock');
+    }
+
+    function mouseClick(d){
+      project.openScript(d.id);
+    }
+
+    function dragstarted(d) {
+      globals.drag = false;
+      if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+    
+    function dragged(d) {
+      globals.drag = true;
+      globals.mouseEv = 'drag';
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+    }
+    
+    function dragended(d) {
+      if(globals.drag === true){
+        if (!d3.event.active) simulation.alphaTarget(0);
+        d.fx = d.x;
+        d.fy = d.y;
+        cookies.createCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fx', d.x, 30);
+        cookies.createCookie(globals.project_path + '/' + globals.project + '/' + d.id + '/fy', d.y, 30);
+        d3.select(this).selectAll('foreignObject').select('.fa-unlock').attr('class', 'fa fa-lock');
+      }
+    }
+
+    function ticked() {
+/*      link.attr("x1", function(d) { return d.source.x; })
+          .attr("y1", function(d) { return d.source.y; })
+          .attr("x2", function(d) { return d.target.x; })
+          .attr("y2", function(d) { return d.target.y; });
+*/
+      node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+    }
+
+    $('#view_project').click(unfocusNode);
+  }
+
+  var old_el = null;
+
+  var unfocusNode = function(evt){
+    if (old_el !== null && evt.target === $('#view_project').get(0)){
+      d3.select(old_el).selectAll("text").style('visibility', 'hidden');
+      d3.select(old_el).selectAll("foreignObject").select("span").transition().style('opacity', 0);
+      d3.select(old_el).selectAll("foreignObject").select("span").style('visibility', 'hidden');
+      d3.select(old_el).selectAll("foreignObject").select("i").transition().style('opacity', 0);
+      d3.select(old_el).selectAll("foreignObject").select("i").style('visibility', 'hidden');
+      d3.select(old_el).select("circle").transition().attr('stroke-width', 3)
+        .attr('r', 10);
+      old_el = null;
+    }
+  }
+
+  exports.show_scripts_proj = show_scripts_proj;
+  exports.unfocusNode = unfocusNode;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
+})));
+</script>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>CleverDat - platform</title>
+		<meta charset="UTF-8" />
+		<link rel="icon" href="front/favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+		<link rel="stylesheet" href="front/extern/bootstrap.min.css">
+		<link rel="stylesheet" href="front/extern/bootstrap-select.min.css">
+		<link rel="stylesheet" href="front/extern/codemirror.css">
+		<link rel="stylesheet" href="front/extern/fileinput.min.css">
+    	<link rel="stylesheet" href="front/extern/leaflet.css">
+		<link rel="stylesheet" href="front/extern/explorer/theme.min.css">
+		<link rel="stylesheet" href="front/extern/font-awesome-4.7.0/css/font-awesome.min.css">
+		<link rel="stylesheet" href="front/css/index.css">
+		<script src="/front/extern/jquery-3.1.1.min.js"></script>
+		<script src="/front/extern/bootstrap.min.js"></script>
+		<script src="/front/extern/bootstrap-select.min.js"></script>
+		<script src="/front/extern/jquery.toaster.js"></script>
+		<script src="/front/extern/codemirror.js"></script>
+		<script src="/front/extern/fileinput.min.js"></script>
+	    <script src="front/extern/leaflet.js"></script>
+	    <script src="http://maps.google.com/maps/api/js?v=3.2&sensor=false"></script>
+	    <script src="front/extern/leaflet-google.js"></script>
+		<script src="/front/extern/explorer/theme.min.js"></script>
+		<script src="/front/js/api.js"></script>
+		<script src="/front/js/globals.js"></script>
+		<script src="/front/js/script.js"></script>
+		<script src="/front/js/project.js"></script>
+		<script src="/front/js/platform.js"></script>
+		<script src="/front/js/index.js"></script>
+		<script src="/front/js/cookies.js"></script>
+	</head>
+	<body>
+		<div id="div_header" style="height:56px;width:100%;">
+			<h1 id="header">list of projects</h1>
+			<span id="back" class="glyphicon glyphicon-arrow-left" aria-hidden="true" onclick="backVue();"></span>
+			<img src="front/favicon.png" width="50" height="50" style="float:right;margin:1px 7px;"/>
+			<span aria-hidden="true" data-toggle="modal" data-target="#cleverDat_licence" style="position:fixed;right:0;margin:1px 7px;width:50px;height:50px;cursor:pointer;"></span>
+		</div>
+		<div id="list_proj">
+		</div>
+		<div id="project">
+		</div>
+		<div id="function">
+            <div class="tab-content">
+                <div role="tabpanel" class="tab-pane active container-fluid" id="function_import">
+	                <div class="row" style="height:100%;overflow:auto;">
+	                	<div class="col-md-2" style="max-height:100%;overflow:auto;">
+		                	<div class="btn-group btn-group-justified" role="group" style="margin:10px 0px;">
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_import" class="btn btn-primary" onclick="script.change_view('import');"><span class="glyphicon glyphicon-save" aria-hidden="true"></span></a>
+		                		</div>
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_process" class="btn btn-default" onclick="script.change_view('process');"><span class="glyphicon glyphicon-tasks" aria-hidden="true"></span></a>
+		                		</div>
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_export" class="btn btn-default" onclick="script.change_view('export');"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span></a>
+		                		</div>
+		                	</div>
+							<div class="list-group" id="function_import_list_plugin">
+								<a href="#" class="list-group-item disabled" style="cursor:default;">plugins list</a>
+								<a href="#" class="list-group-item" style="background-color:white;cursor:default;"></a>
+							</div>
+						</div>
+						<div class="col-md-10" id="import_widget_plugin" style="max-height:100%;height:100vw;"></div>
+					</div>
+                </div>
+                <div role="tabpanel" class="tab-pane container-fluid" id="function_process">
+	                <div class="row" style="height:100%;overflow:auto;">
+	                	<div class="col-md-2" style="max-height:100%;overflow:auto;">
+		                	<div class="btn-group btn-group-justified" role="group" style="margin:10px 0px;">
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_import" class="btn btn-default" onclick="script.change_view('import');"><span class="glyphicon glyphicon-save" aria-hidden="true"></span></a>
+		                		</div>
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_process" class="btn btn-primary" onclick="script.change_view('process');"><span class="glyphicon glyphicon-tasks" aria-hidden="true"></span></a>
+		                		</div>
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_export" class="btn btn-default" onclick="script.change_view('export');"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span></a>
+		                		</div>
+		                	</div>
+							<div class="list-group" id="function_process_list_plugin">
+								<a href="#" class="list-group-item disabled" style="cursor:default;">plugins list</a>
+								<a href="#" class="list-group-item" style="background-color:white;cursor:default;"></a>
+							</div>
+						</div>
+						<div class="col-md-10" id="process_widget_plugin" style="max-height:100%;height:100vw;"></div>
+					</div>
+                </div>
+                <div role="tabpanel" class="tab-pane container-fluid" id="function_export">
+	                <div class="row" style="height:100%;overflow:auto;">
+	                	<div class="col-md-2" style="max-height:100%;overflow:auto;">
+		                	<div class="btn-group btn-group-justified" role="group" style="margin:10px 0px;">
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_import" class="btn btn-default" onclick="script.change_view('import');"><span class="glyphicon glyphicon-save" aria-hidden="true"></span></a>
+		                		</div>
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_process" class="btn btn-default" onclick="script.change_view('process');"><span class="glyphicon glyphicon-tasks" aria-hidden="true"></span></a>
+		                		</div>
+		                		<div class="btn-group" role="group">
+		                			<a type="button" href="#function_export" class="btn btn-primary" onclick="script.change_view('export');"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span></a>
+		                		</div>
+		                	</div>
+							<div class="list-group" id="function_export_list_plugin">
+								<a href="#" class="list-group-item disabled" style="cursor:default;">plugins list</a>
+								<a href="#" class="list-group-item" style="background-color:white;cursor:default;"></a>
+							</div>
+						</div>
+						<div class="col-md-10" id="export_widget_plugin" style="max-height:100%;height:100vw;"></div>
+					</div>
+                </div>
+            </div>
+		</div>
+
+		<!-- this is the modal for the platform settings -->
+		<div id="platform_settings" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">platform settings</h4>
+				    </div>
+				    <div class="modal-body">
+				        <h5>Projects paths:</h5>
+				        <ul id="projects_paths">
+				        </ul>
+				        <h5>platform widget:</h5>
+				        <select id="select_platform_widget" class="selectpicker" onchange="platform.changeWidget()">
+				        </select>
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal platform settings -->
+
+		<!-- this is the modal for the new project -->
+		<div id="new_project" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">new project</h4>
+				    </div>
+				    <div class="modal-body">
+				        <h5>Project path:</h5>
+				        <select id="select_path_new_proj" class="selectpicker">
+				        </select>
+				        <h5>Project name:</h5>
+				        <input type="text" name="name_proj" id="name_new_proj" placeholder="Ex : Meteo" size="30" maxlength="30" />
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				        <button type="button" class="btn btn-primary" onclick="platform.createNewProject();">Create</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal new project -->
+
+		<!-- this is the modal for the edit project -->
+		<div id="edit_project" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">edit project</h4>
+				    </div>
+				    <div class="modal-body">
+				        <h5>Project path:</h5>
+				        <select id="select_path_edit_proj" class="selectpicker">
+				        </select>
+				        <h5>Project name:</h5>
+				        <input type="text" name="name_proj" id="name_edit_proj" placeholder="Ex : Meteo" size="30" maxlength="30" />
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				        <button type="button" class="btn btn-primary" onclick="platform.editProject();">Edit</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal edit project -->
+
+		<!-- this is the modal for the new script -->
+		<div id="new_script" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">New script</h4>
+				    </div>
+				    <div class="modal-body">
+				        <h5>Script name:</h5>
+				        <input type="text" name="name_proj" id="name_new_script" placeholder="Ex : Make_coffee" size="30" maxlength="30" />
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				        <button type="button" class="btn btn-primary" onclick="project.createNewScript();">Create</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal new script -->
+
+		<!-- this is the modal for the edit script -->
+		<div id="edit_script" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">New script</h4>
+				    </div>
+				    <div class="modal-body">
+				        <h5>Script name:</h5>
+				        <input type="text" name="name_proj" id="name_edit_script" placeholder="Ex : Make_coffee" size="30" maxlength="30" />
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				        <button type="button" class="btn btn-primary" onclick="project.editScript();">Edit</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal edit script -->
+
+		<!-- this is the modal for the edit script -->
+		<div id="project_settings" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">Project settings</h4>
+				    </div>
+				    <div class="modal-body">
+				        <h5>Plugins paths:</h5>
+				        <ul id="plugins_paths">
+				        </ul>
+				        <h5>project widget:</h5>
+				        <select id="select_project_widget" class="selectpicker" onchange="">
+				        </select>
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal project settings -->
+
+		<!-- this is the modal for the new plugin -->
+		<div id="new_plugin" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">New plugin</h4>
+				    </div>
+				    <div class="modal-body">
+					    <img id="select-plugin-image" style="float:right;width:40%;" src=""/>
+				        <h5>Get plugin:</h5>
+				        <select id="select_plugin" class="selectpicker" onchange="script.set_select_plugin();">
+				        </select>
+				        <h5>Set position:</h5>
+				        <input id="position_plugin" type="number" min="0" max="10" value="0" />
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				        <button type="button" class="btn btn-primary" onclick="script.addPlugin();">Add</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal new plugin -->
+
+		<!-- this is the modal for the new plugin -->
+		<div id="cleverDat_licence" class="modal fade" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+			    <div class="modal-content">
+				    <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				        <h4 class="modal-title">MIT Licence:</h4>
+				    </div>
+				    <div class="modal-body">
+
+						</br>Copyright © 02/06/2017, Adrien BOSSI</br></br>
+
+						Permission is hereby granted, free of charge, to any person obtaining a copy of
+						this software and associated documentation files (the “Software”), to deal in
+						the Software without restriction, including without limitation the rights to
+						use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+						of the Software, and to permit persons to whom the Software is furnished to do
+						so, subject to the following conditions:</br></br>
+
+						The above copyright notice and this permission notice shall be included in all
+						copies or substantial portions of the Software.</br></br>
+
+						The Software is provided “as is”, without warranty of any kind, express or
+						implied, including but not limited to the warranties of merchantability, fitness
+						for a particular purpose and noninfringement. In no event shall the authors or
+						copyright holders X be liable for any claim, damages or other liability, whether
+						in an action of contract, tort or otherwise, arising from, out of or in
+						connection with the software or the use or other dealings in the Software.</br></br>
+
+						Except as contained in this notice, the name of Adrien BOSSI shall not be used
+						in advertising or otherwise to promote the sale, use or other dealings in this
+						Software without prior written authorization from Adrien BOSSI.</br>
+
+				    </div>
+				    <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				    </div>
+			    </div>
+			</div>
+		</div>
+		<!-- end modal new plugin -->
+
+		<div id="loading-wrapper">
+			<div id="loading-content"></div>
+		</div>
+		
+	</body>
+		<script src="/front/extern/d3.v4.min.js"></script>
+</html>

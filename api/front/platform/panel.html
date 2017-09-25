@@ -1,0 +1,182 @@
+<div id="list_proj_place" style="width:100%;">
+</div>
+<script>
+var show_list_proj = function(){
+	api.getProjects().then(function(a){
+	  $('#list_proj_place').html('');
+	  result = '<span id="settings" class="glyphicon glyphicon-cog" aria-hidden="true" data-toggle="modal" data-target="#platform_settings"></span>' +
+	  		   '<div role="tabpanel" class="container-fluid">';
+	  for (i in a){
+	    result += '<h2>' + i + '</h2><div class="row container-fluid">'
+	    for (j in a[i]){
+	      result += '<div class="col-xs-6 col-md-3 col-lg-2">' +
+	                '  <div style="border:1px solid gray;border-radius:5px;margin:20px 5px 5px 5px;position:relative;overflow:hidden;" onmouseenter="showOptionsProject(this);" onmouseleave="hideOptionsProject(this);">' +
+	                '    <svg viewBox="-400 -300 800 600" class="min_proj" id="min_proj_' + i.replace(/\.|\/|\s/g, '')  + '-' + a[i][j] + '" onclick="platform.openProject(\'' + i + '\', \'' + a[i][j] + '\');">' +
+	                '    </svg>' +
+	                '    <div class="btn-group" role="group" style="visibility:hidden;position:absolute;top:-1px;right:-1px;">' +
+	                '      <button class="btn btn-default" type="button" style="border-radius:0px 0px 0px 5px;padding:2px 12px;" onclick="platform.editProj(\'' + i + '\',\'' + a[i][j] + '\');" data-toggle="modal" data-target="#edit_project"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>' +
+	                '      <button class="btn btn-danger" type="button" style="border-radius:0px 5px 0px 0px;padding:2px 12px;" onclick="removeProj(\'' + i + '\',\'' + a[i][j] + '\');"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>' +
+	                '    </div>' +
+	                '  </div>' +
+	                '  <h3>' + a[i][j] + '</h3>' +
+	                '</div>'
+	    }
+	    result += '<div class="col-xs-6 col-md-3 col-lg-2">' +
+	              '  <div style="margin:20px 5px 5px 5px;">' +
+	              '    <button type="button" class="btn btn-success add_proj"  data-toggle="modal" data-target="#new_project" path="' + i +
+	              '" onclick="platform.setNewProj(this);"><span class="glyphicon glyphicon-plus" aria-hidden="true" style="position:absolute;left:0;right:0;top:25%;"></span></button>' +
+	              '    <h3>new project</h3>' +
+	              '  </div>' +
+	              '</div></div>'
+	  }
+	  result += '</div>';
+	  $('#list_proj_place').html(result);
+	  platform.getProjectsPaths();
+	  addSvgNodes(a);
+	})
+}
+
+var addSvgNodes = function(a, i = 0, j = 0){
+	var path = Object.keys(a)[i];
+	if (path === undefined)
+		return ;
+	var project = a[path][j];
+	while (project === undefined){
+		i++;
+		j = 0;
+		path = Object.keys(a)[i];
+		if (path === undefined)
+			return ;
+		project = a[path][j];
+	}
+
+    api.getScript(path, project).then(function(d) {
+	    var svg = d3.select("#min_proj_" + d.path.replace(/\.|\/|\s/g, '') + '-' + d.name),
+	        width = +svg.attr("width"),
+	        height = +svg.attr("height");
+
+      data = {"nodes":[],
+              "links": []};
+      for (el in d.result){
+        data.nodes.push({'id': d.result[el]});
+      }
+
+    function ticked() {
+/*      link.attr("x1", function(d) { return d.source.x; })
+          .attr("y1", function(d) { return d.source.y; })
+          .attr("x2", function(d) { return d.target.x; })
+          .attr("y2", function(d) { return d.target.y; });
+*/
+      node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+      simulation.tick();
+      simulation.tick();
+      simulation.tick();
+    }
+
+    var simulation = d3.forceSimulation()
+        .force("charge", d3.forceManyBody().strength(-200))
+//        .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(40))
+        .force("x", d3.forceX(width / 2))
+        .force("y", d3.forceY(height / 2))
+        .alphaTarget(-0.5)
+        .on("tick", ticked)
+	    .on('end', function() {
+	      // layout is done
+	      addSvgNodes(a, i, j + 1);
+	    });
+
+      simulation.nodes(data.nodes);
+    /*  simulation.force("link").links(graph.links);
+
+      link = link
+        .data(graph.links)
+        .enter().append("line")
+          .attr("class", "link");
+    */
+
+      node = svg
+        .selectAll("circle")
+        .data(data.nodes)
+        .enter().append("g")
+
+      node.append("circle")
+        .attr("r", 15)
+        .attr('fy', function(d){
+          var fx = cookies.readCookie(path + '/' + project + '/' + d.id + '/fx');
+          var fy = cookies.readCookie(path + '/' + project + '/' + d.id + '/fy');
+          if (fx !== null && fx !== '')
+            d.fx = fx;
+          if (fy !== null && fy !== '')
+            d.fy = fy;
+          return 0;
+        })
+        .style('fill', '#00BCD4')
+        .attr('stroke-width', 5)
+        .attr('stroke', '#00BCD4')
+        .attr('stroke-opacity', 0.5)
+    });
+}
+
+var showOptionsProject = function(el){
+	$(el).children(".btn-group").css('visibility', 'visible');
+}
+
+var hideOptionsProject = function(el){
+	$(el).children(".btn-group").css('visibility', 'hidden');
+}
+
+var removeProj = function(path, proj){
+	if (confirm('Are you sure that you would remove this project?')){
+		api.removeProject(path, proj).then(function(a){
+      		$.toaster({ message : a['message'], priority : 'success' });
+      		show_list_proj()
+  		});
+	}
+}
+
+$(document).ready(function(){
+	show_list_proj();
+});
+</script>
+<style>
+.add_proj {
+	font-size: 5vw;
+	border: 1px solid gray;
+	width: 100%;
+	padding-top: 74%;
+	position: relative;
+	background-color: #00AAAA;
+}
+
+.add_proj:hover {
+	background-color: #007878;
+	border: 1px solid gray;
+}
+
+.add_proj:focus {
+	background-color: #00AAAA;
+	border: 1px solid gray;
+}
+
+/* XS, SM */
+@media (max-width: 991px) {
+  .add_proj {
+  	font-size: 14vw;
+  }
+}
+
+/* MD */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .add_proj {
+  	font-size: 7vw;
+  }
+}
+
+/* LG */
+@media (min-width: 1200px) {
+  .add_proj {
+  	font-size: 5vw;
+  }
+}
+</style>

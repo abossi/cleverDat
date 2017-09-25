@@ -1,0 +1,176 @@
+<div class="row" style="margin:5px;">
+  <div class="col-lg-6">
+    <label class="control-label">Select File</label>
+	<input id="input-1" type="file" accept=".csv" class="file" onchange="editTabCSV();">
+  </div><!-- /.col-lg-6 -->
+  <div class="col-lg-6">
+  	<div class="row">
+  	  <div class="col-lg-6">
+	    <fieldset>
+	      <legend>Line separator:</legend>
+		  <input type="radio" name="line_sep" value="n" checked> \n<br>
+		  <input type="radio" name="line_sep" value="tab"> \t<br>
+		  <input type="radio" name="line_sep" value="|"> |<br>
+		  <input type="radio" name="line_sep" value="other"> Other <input id="line_sep" type="text" onchange="editTabCSV();">
+	    </fieldset>
+	  </div>
+  	  <div class="col-lg-6">
+	    <fieldset>
+	      <legend>Colonne separator:</legend>
+		  <input type="radio" name="col_sep" value=";" checked> ;<br>
+		  <input type="radio" name="col_sep" value=","> ,<br>
+		  <input type="radio" name="col_sep" value="."> .<br>
+		  <input type="radio" name="col_sep" value="other"> Other <input id="col_sep" type="text" onchange="editTabCSV();">
+	    </fieldset>
+	  </div>
+  	  <div class="col-lg-6">
+  	  	<label>
+  	  	  <br>
+		  <input type="checkbox" id="headerBox" onchange="editTabCSV();">
+		  Have a header
+		</label>
+	  </div>
+	</div>
+  </div>
+  <div class="col-lg-12" id="csv_table" style="overflow: auto;max-height: 78vmin;">
+  </div>
+</div><!-- /.row -->
+
+<script>
+var editTabCSV = function(){
+	var input = $('#input-1').get(0);
+	if (input.files && input.files[0]){
+		input = input.files[0].name;
+		file = input;
+	}
+	else
+		input = file;
+	var line_sep = $('input[name="line_sep"]:checked').val().replace('tab', '\\t').replace('n', '\\n');
+	if (line_sep === "other")
+		line_sep = $('#line_sep').val();
+	var col_sep = $('input[name="col_sep"]:checked').val();
+	if (col_sep === "other")
+		col_sep = $('#col_sep').val();
+	if (line_sep === '' || col_sep === '' || !input){
+		$('#csv_table').html('');
+	}
+	api.setScriptPluginParam(globals.project_path, globals.project, globals.script, 'imp', globals.position['imp'], {
+		'line_sep': line_sep,
+		'col_sep': col_sep,
+		'header': $('#headerBox').is(":checked"),
+		'file': input
+	}).then(function(a){
+        $.toaster({ message : a['message'], priority : 'success' });
+		api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'imp', globals.position['imp']).then(function(a){
+			var name = Object.keys(a)[0]
+			if (name === 'message') {
+				$( '#csv_table' ).html('');
+				$( '#csv_table' ).html('<div class="alert alert-info" role="alert" style="margin-top:10px;font-size: 1.5em;text-align: center;">' + a.message + '</div>');
+				return ;
+			}
+			var result = '<table class="table table-striped" style="margin-top:10px;">';
+			result += '<tr>';
+			for (var j in a[name]){
+				if (a[name][j].length <= 1){
+					$( '#csv_table' ).html('');
+					$( '#csv_table' ).html('<div class="alert alert-warning" role="alert" style="margin-top:10px;font-size: 1.5em;text-align: center;">Your line separator looks wrong. ' + a[name][j].length + ' line!</div>');
+					return ;
+				}
+				result += '<th>' + j + '</th>';
+			}
+			result += '</tr>';
+			var max = 20;
+			for (var i = 0 ; i < max ; i++){
+				result += '<tr>';
+				for (var j in a[name]){
+					result += '<td>' + a[name][j][i] + '</td>';
+				}
+				result += '</tr>';
+			}
+			result += '</table>';
+			$( '#csv_table' ).html(result)
+		})
+	})
+}
+
+$('input[type=radio][name=line_sep]').change(function() {
+	editTabCSV();
+});
+
+$('input[type=radio][name=col_sep]').change(function() {
+	editTabCSV();
+});
+
+var file = '';
+
+api.getScriptPluginParam(globals.project_path, globals.project, globals.script, 'imp', globals.position['imp']).then(function(a){
+	$('input:radio[name=col_sep][value="' + a.col_sep + '"]').prop('checked', true);
+	console.log(a.line_sep);
+	$('input:radio[name=line_sep][value="' + a.line_sep.replace('\\n', 'n').replace('\\t', 'tab') + '"]').prop('checked', true);
+	$('#headerBox').prop('checked', a.header)
+	if (a.file === ''){
+		$("#input-1").fileinput({
+			theme: "explorer",
+			uploadUrl: "/load_file/" + globals.project_path + '/' + globals.project,
+			allowedFileExtensions: ['csv'],
+			hideThumbnailContent: true,
+		})
+		$("#input-1").on('fileuploaded', function($input){
+			editTabCSV();
+		}).on("filebatchselected", function(event, f) {
+			file = f[0].name;
+			editTabCSV();
+		});
+	}
+	else {
+		$("#input-1").fileinput({
+			theme: "explorer",
+			uploadUrl: "/load_file/" + globals.project_path + '/' + globals.project,
+			allowedFileExtensions: ['csv'],
+			hideThumbnailContent: true,
+			initialPreview: [a.file],
+			initialPreviewConfig: [
+	            {caption: a.file, width: "120px", key: 1, showZoom: false}
+	        ],
+			initialPreviewAsData: true,
+			initialCaption: a.file
+		})
+		$("#input-1").on('fileuploaded', function($input){
+			editTabCSV();
+		}).on("filebatchselected", function(event, f) {
+			file = f[0].name;
+			editTabCSV();
+		});
+	}
+	file = a.file;
+	api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'imp', globals.position['imp']).then(function(a){
+		var name = Object.keys(a)[0]
+		if (name === 'message') {
+			$( '#csv_table' ).html('');
+			$( '#csv_table' ).html('<div class="alert alert-info" role="alert" style="margin-top:10px;font-size: 1.5em;text-align: center;">' + a.message + '</div>');
+			return ;
+		}
+		var result = '<table class="table table-striped" style="margin-top:10px;">';
+		result += '<tr>';
+		for (var j in a[name]){
+			if (a[name][j].length <= 1){
+				$( '#csv_table' ).html('');
+				$( '#csv_table' ).html('<div class="alert alert-warning" role="alert" style="margin-top:10px;font-size: 1.5em;text-align: center;">Your line separator looks wrong. ' + a[name][j].length + ' line!</div>');
+				return ;
+			}
+			result += '<th>' + j + '</th>';
+		}
+		result += '</tr>';
+		var max = 20;
+		for (var i = 0 ; i < max ; i++){
+			result += '<tr>';
+			for (var j in a[name]){
+				result += '<td>' + a[name][j][i] + '</td>';
+			}
+			result += '</tr>';
+		}
+		result += '</table>';
+		$( '#csv_table' ).html(result);
+	})
+})
+</script>

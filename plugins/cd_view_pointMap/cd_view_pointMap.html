@@ -1,0 +1,265 @@
+<div class="row" style="margin:5px;">
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select table</span>
+	  <input type="text" id="table" class="form-control" placeholder="table name" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select longitude</span>
+	  <input type="text" id="longitude" class="form-control" placeholder="longitude column" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select latitude</span>
+	  <input type="text" id="latitude" class="form-control" placeholder="latitude column" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+  <div class="col-lg-3">
+	<div class="input-group" style="margin-bottom:5px;">
+	  <span class="input-group-addon" id="basic-addon1">Select legend</span>
+	  <input type="text" id="popup" class="form-control" placeholder="latitude column" aria-describedby="basic-addon1" onchange="edit_parameters_leaflet();">
+	</div>
+  </div><!-- /.col-lg-3 -->
+</div><!-- /.row -->
+<div id="leafletMap" style="height:90vmin;"></div>
+
+<script>
+var googleLayerROADMAP = new L.Google('ROADMAP');
+var googleLayerSATELLITE = new L.Google('SATELLITE');
+var googleLayerHYBRID  = new L.Google("HYBRID");
+var googleLayerTERRAIN = new L.Google('TERRAIN');
+
+
+
+var baseMap = {
+    "Route" : googleLayerROADMAP,
+    "Satellite" : googleLayerSATELLITE,
+    "Hybride" : googleLayerHYBRID,
+    "Relief" : googleLayerTERRAIN
+};
+
+
+var mymap = new L.Map('leafletMap', 
+  {
+    center: new L.LatLng(48.896403, 2.318653),
+    zoom: 3,
+    layers: [googleLayerROADMAP]
+  });
+
+//Contrôles pour les layers contenant les données.
+var overlaysMaps = {
+
+};
+
+L.control.layers(baseMap, null, { collapsed: false }).addTo(mymap);
+
+var points = [];
+var bounds = {};
+var color_list = [];
+var num_iter = 0;
+var min;
+var max;
+var legend = L.control({position: 'bottomright'});
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend');
+
+    div.innerHTML = '<b><span id="name-legend"></span>:</b><br><br>' +
+        '<i style="background-image:linear-gradient(to right, white, black);"></i><br>' +
+        '<div style="float:left;"><span id="min-legend"></span></div><div style="float:right;"><span id="max-legend"></span></div>';
+
+    return div;
+};
+legend.addTo(mymap);
+
+mymap.on('moveend', function() {
+    remove_points();
+    set_points();
+});
+
+var edit_parameters_leaflet = function(){
+	var table = $('#table').val();
+	var longitude = $('#longitude').val();
+	var latitude = $('#latitude').val();
+	var popup = $('#popup').val();
+
+	api.setScriptPluginParam(globals.project_path, globals.project, globals.script, 'exp', globals.position['exp'], {
+		'table': table,
+		'longitude': longitude,
+		'latitude': latitude,
+		'popup': popup
+	}).then(function(a){
+        $.toaster({ message : a['message'], priority : 'success' });
+
+    if ($('#table').val() !== '' && $('#longitude').val() !== '' && $('#latitude').val() !== ''){
+  		api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'exp', globals.position['exp']).then(function(b){
+  			remove_points();
+  			points = [];
+  			color_list = [];
+  			for (var i = 0; i < b[$('#table').val()][0].length ; i++){
+  				points.push([parseFloat(b[$('#table').val()][0][i]), parseFloat(b[$('#table').val()][1][i])]);
+          if (b[$('#table').val()][2] !== undefined) {
+            $('.legend').show();
+            color_list.push(parseFloat(b[$('#table').val()][2][i]));
+          }
+          else{
+            $('.legend').hide();
+            color_list = [];
+          }
+  			}
+  			set_points();
+  		})
+  	}
+  })
+}
+
+var remove_points = function(){
+	mymap.eachLayer(function (layer) {
+		if (layer._url === undefined && !layer._google) {
+			mymap.removeLayer(layer);
+		}
+	});
+	mymap.removeLayer(legend);
+}
+
+var set_points = function(){
+	bounds = mymap.getBounds();
+	var nb_in_marker = [];
+
+  var visible_markers = [];
+  var visible_colors_list = [];
+  var points_length = points.length;
+  var total_markers = 10001;
+  var nb_boucle = 0;
+  var half_longueur_cote_min = Math.min(Math.abs(bounds._southWest.lat - bounds._northEast.lat), Math.abs(bounds._southWest.lng - bounds._northEast.lng)) / 500;
+  while (total_markers > 10000){
+    total_markers = 0;
+    var half_longueur_cote = half_longueur_cote_min * nb_boucle;
+    nb_boucle++;
+    visible_markers = [];
+    visible_colors_list = [];
+    for (var i = 0 ; i < points_length && total_markers <= 10000 ; i++){
+      if (points[i][0] >= bounds._southWest.lat && points[i][0] <= bounds._northEast.lat &&
+        ((Math.floor((bounds._southWest.lng + 180) / 360) != Math.floor((bounds._northEast.lng + 180) / 360) &&
+        (points[i][1] >= ((bounds._southWest.lng + 180) % 360 - 180) || points[i][1] <= ((bounds._northEast.lng + 180) % 360 - 180)) &&
+        (points[i][1] <= ((bounds._northEast.lng - 180) % 360 + 180) || points[i][1] >= ((bounds._southWest.lng - 180) % 360 + 180))) ||
+        (Math.floor((bounds._southWest.lng + 180) / 360) == Math.floor((bounds._northEast.lng + 180) / 360) &&
+        points[i][1] >= ((bounds._southWest.lng + 180) % 360 - 180) && points[i][1] <= ((bounds._northEast.lng - 180) % 360 + 180)))) {
+        var add_point = true;
+        for (var j = 0 ; j < visible_markers.length ; j++){
+          if (points[i][0] >= (visible_markers[j][0] - half_longueur_cote) && points[i][0] <= (visible_markers[j][0] + half_longueur_cote) &&
+            points[i][1] >= (visible_markers[j][1] - half_longueur_cote)  && points[i][1] <= (visible_markers[j][1] + half_longueur_cote)){
+            add_point = false;
+            if (color_list.length)
+              visible_colors_list[j].push(color_list[i]);
+            break;
+          }
+        }
+        if (add_point){
+          visible_markers.push(points[i]);
+          if (color_list.length)
+            visible_colors_list.push([color_list[i]]);
+          total_markers++;
+        }
+      }
+    }
+  }
+  var visible_colors = [];
+  for (var point_nb = 0 ; point_nb < visible_colors_list.length ; point_nb++){
+    var somme = 0;
+    for (var elem_point = 0 ; elem_point < visible_colors_list[point_nb].length ; elem_point++){
+      somme += visible_colors_list[point_nb][elem_point];
+    }
+    visible_colors.push(parseInt(somme / visible_colors_list[point_nb].length));
+  }
+
+  min = Math.min.apply(null, visible_colors);
+  max = Math.max.apply(null, visible_colors);
+
+  $('#name-legend').html($('#popup').val());
+  $('#min-legend').html(min);
+  $('#max-legend').html(max);
+
+  var points_length = visible_markers.length;
+  if (visible_colors.length){
+    for (var i = 0 ; i < points_length ; i++){
+      while (visible_markers[i][1] < bounds._southWest.lng)
+        visible_markers[i][1] += 360;
+      while (visible_markers[i][1] > bounds._northEast.lng)
+        visible_markers[i][1] -= 360;
+      var nb_color = 255 - parseInt(((visible_colors[i] - min) * 255) / (max - min));
+      L.polygon([visible_markers[i]], {
+        color: '#' + nb_color.toString(16) + nb_color.toString(16) + nb_color.toString(16),
+        opacity: "1",
+        weight: "3"
+      }).addTo(mymap);
+    }
+  }
+  else {
+    for (var i = 0 ; i < points_length ; i++){
+      while (visible_markers[i][1] < bounds._southWest.lng)
+        visible_markers[i][1] += 360;
+      while (visible_markers[i][1] > bounds._northEast.lng)
+        visible_markers[i][1] -= 360;
+      L.polygon([visible_markers[i]], {
+        color: 'red',
+        opacity: "1",
+        weight: "3"
+      }).addTo(mymap);
+    }
+  }
+}
+
+api.getScriptPluginParam(globals.project_path, globals.project, globals.script, 'exp', globals.position['exp']).then(function(a){
+	$('#table').val(a.table);
+	$('#longitude').val(a.longitude);
+	$('#latitude').val(a.latitude);
+	$('#popup').val(a.popup);
+
+  if (a.table !== '' && a.longitude !== '' && a.latitude !== ''){
+  	api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'exp', globals.position['exp']).then(function(b){
+  		for (var i = 0; i < b[$('#table').val()][0].length ; i++){
+  			points.push([parseFloat(b[$('#table').val()][0][i]), parseFloat(b[$('#table').val()][1][i])]);
+        if (b[$('#table').val()][2] !== undefined){
+          $('.legend').show();
+  			  color_list.push(parseFloat(b[$('#table').val()][2][i]));
+        }
+        else{
+          $('.legend').hide();
+          color_list = [];
+        }
+  		}
+  		remove_points();
+  		set_points();
+  	})
+  }
+});
+</script>
+<style>
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+.legend i {
+    min-width: 150px;
+    width: 100%;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.leaflet-google-layer {
+  z-index: 0;
+}
+</style>

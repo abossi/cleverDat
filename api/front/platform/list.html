@@ -1,0 +1,18 @@
+<script>
+var show_list_proj = function(){
+	api.getProjects().then(function(a){
+	  $('#list_proj').html('');
+	  result = '';
+	  for (i in a){
+	    result += '<h2>' + i + '</h2><ul>'
+	    for (j in a[i]){
+	      result += '<li>' + a[i][j] + '</li>'
+	    }
+	    result += '</ul>'
+	  }
+	  $('#list_proj').html(result);
+	  projects.getProjectsPaths();
+	})
+}
+show_list_proj();
+</script>

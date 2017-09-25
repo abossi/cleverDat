@@ -1,0 +1,77 @@
+<!--
+
+First step
+
+put your html here
+
+-->
+<div class="row" style="margin:5px;">
+  <div class="col-lg-12">
+  	<div class="input-group">
+	  <span class="input-group-addon" id="basic-addon1">Your text</span>
+	  <input id="id_input_hello_world" type="text" class="form-control" placeholder="Your hello world text" aria-describedby="basic-addon1" onchange="edit_input_hello_world();">
+	</div>
+  </div><!-- /.col-lg-12 -->
+  <div class="alert alert-info col-lg-12 css_alert_div" role="alert">the result of your script is:</div>
+  <div class="col-lg-12">
+  	<h1 id="id_hello_world"></h1>
+  </div><!-- /.col-lg-12 -->
+  <div class="alert alert-success col-lg-12 css_alert_div" role="alert">Well done!</div>
+</div><!-- /.row -->
+
+<!--
+
+Second step
+
+put your js here
+
+-->
+<script>
+var edit_input_hello_world = function(){
+
+	/**********************************************************
+	**            this request edit all parameters           **
+	**********************************************************/
+	api.setScriptPluginParam(globals.project_path, globals.project, globals.script, 'proc', globals.position['proc'], {
+		'text': $('#id_input_hello_world').val()
+	}).then(function(a){
+        $.toaster({ message : a['message'], priority : 'success' });
+
+		/**********************************************************
+		**   this request get back the return of the decorator   **
+		**********************************************************/
+		api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'proc', globals.position['proc']).then(function(a){
+			$('#id_hello_world').html(a.text);
+		})
+	})
+}
+
+/**********************************************************
+**   this request get back all parameters as key/value   **
+**********************************************************/
+api.getScriptPluginParam(globals.project_path, globals.project, globals.script, 'proc', globals.position['proc']).then(function(a){
+	
+	$('#id_input_hello_world').val(a.text);
+
+	/**********************************************************
+	**   this request get back the return of the decorator   **
+	**********************************************************/
+	api.runScriptReturn(globals.project_path, globals.project, globals.script, ['imp', 'proc', 'exp'], 'proc', globals.position['proc']).then(function(a){
+		$('#id_hello_world').html(a.text);
+	})
+})
+</script>
+
+<!--
+
+third step
+
+put your css here
+
+-->
+<style>
+
+.css_alert_div {
+	margin-top: 85px;
+}
+</style>
